@@ -26,21 +26,21 @@ BlipData = {
 Config.Stocks = {
     ["bond1"] = { 
         label = "West Elizabeth Obligacijos", -- Aprašymas: West Elizabeth Obligacijos yra paskolos vertybinis popierius kuriuo galima prekiauti biržoje ir už jos ribų.
-        price = 1000, 
+        price = 1000, -- centai
         item = "bond1",
         priceChange = { increase = 33, decrease = 34 }, -- Centai
         minPrice = 1 -- Minimalios kainos riba centais
     },
     ["bond2"] = { 
         label = "New Hanover Obligacijos",  -- Aprašymas: New Hanover Obligacijos yra paskolos vertybinis popierius kuriuo galima prekiauti biržoje ir už jos ribų.
-        price = 1000, 
+        price = 1000, -- centai
         item = "bond2",
         priceChange = { increase = 33, decrease = 34 }, -- Centai
         minPrice = 1 -- Minimalios kainos riba centais
     },
     ["bond3"] = { 
         label = "Cornwall Co. Akcijos",  --- Aprašymas: Cornwall Co. Akcijos yra paskolos vertybinis popierius kuriuo galima prekiauti biržoje ir už jos ribų.
-        price = 1000, 
+        price = 1000, -- centai
         item = "bond3",
         priceChange = { increase = 10, decrease = 11 }, -- Centai
         minPrice = 1 -- Minimalios kainos riba centais
@@ -51,7 +51,7 @@ Config.Stocks = {
 -- Vertimo raktai
 Config.Translations = {
     menuTitle = "Birža",
-    buyOption = "Pirkti %s",
+    buyOption = "---Pirkti %s ---",
     sellOption = "Parduoti %s",
     notEnoughMoney = "Neturite pakankamai pinigu!",
     noSpaceInInventory = "Neturite vietos inventoriuje!",
@@ -60,6 +60,12 @@ Config.Translations = {
     priceTooLow = "Nera kam parduoti!",
     buySuccess = "Pirkote %d x %s už $%.2f",
     sellSuccess = "Parduota %d x %s už $%.2f",
+    cooldownNotification = "Prašome palaukti %d sekundžiu"
 }
 
 
+
+Config.cooldownTime = 3 --- Ribinės vertės
+-- Mažiems serveriams (iki 20 žaidėjų):     5–10 sekundžių: Greitas atnaujinimas yra saugus, nes serverio apkrova maža.
+-- Vidutiniams serveriams (20–50 žaidėjų):     15–30 sekundžių: Subalansuota apkrovos ir reagavimo laiko riba.
+-- Dideliems serveriams (50+ žaidėjų):     30–60 sekundži: Rekomenduojama riboti apkrovą ilgesniu intervalu.
