@@ -1,6 +1,5 @@
-local VORPcore = {}
+
 local currentStockPrices = {}
-local showingPrompt = false
 local MenuData = {}
 local initBlips = {}
 
@@ -66,7 +65,7 @@ local function displayPromptWithPrices()
 
     for stockId, stock in pairs(Config.Stocks) do
         local prices = currentStockPrices[stockId] or { buy = stock.price, sell = stock.price }
-        text = text .. string.format("\n%s: $%.2f (Pirkti) / $%.2f (Parduoti)", stock.label, prices.buy, prices.sell)
+        text = text .. string.format("\n%s: $%.2f/ $%.2f", stock.label, prices.buy, prices.sell)
     end
 
     DrawText3D(location.x, location.y, location.z + 0.25, text)

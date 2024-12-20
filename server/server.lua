@@ -146,20 +146,24 @@ AddEventHandler('stockmarket:sellStock', function(stockId, amount)
     local Character = User.getUsedCharacter
 
     local stock = Config.Stocks[stockId]
-    local currentPrice = stockPrices[stockId] or stock.price
+    local buyPrice = stockPrices[stockId] or stock.price
+    local sellPrice = math.max(stock.minPrice, buyPrice - stock.priceChange.decrease)
     local totalEarnings = 0
 
     for i = 1, amount do
-        totalEarnings = totalEarnings + currentPrice
-        currentPrice = math.max(stock.minPrice, currentPrice - stock.priceChange.decrease)
+        totalEarnings = totalEarnings + sellPrice
+        sellPrice = math.max(stock.minPrice, sellPrice - stock.priceChange.decrease)
     end
+
+    -- Atnaujinkite buyPrice po pardavimo
+    local newBuyPrice = math.max(stock.minPrice, buyPrice - (stock.priceChange.decrease * amount))
+    stockPrices[stockId] = newBuyPrice
 
     if VorpInv.getItemCount(_source, stock.item) >= amount then
         Character.addCurrency(0, totalEarnings)
         VorpInv.subItem(_source, stock.item, amount)
-        stockPrices[stockId] = currentPrice
         MySQL.Async.execute('UPDATE stocks SET price = @price WHERE stock_id = @id', {
-            ['@price'] = currentPrice,
+            ['@price'] = newBuyPrice,
             ['@id'] = stockId
         })
         TriggerClientEvent('stockmarket:notify', _source, Config.Translations.sellSuccess:format(amount, stock.label, totalEarnings), "success")

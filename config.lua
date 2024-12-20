@@ -26,24 +26,24 @@ BlipData = {
 Config.Stocks = {
     ["bond1"] = { 
         label = "West Elizabeth Obligacijos", -- Aprašymas: West Elizabeth Obligacijos yra paskolos vertybinis popierius kuriuo galima prekiauti biržoje ir už jos ribų.
-        price = 10.00, -- centai
+        price = 10.00,
         item = "bond1",
-        priceChange = { increase = 0.33, decrease = 0.34 }, -- Centai
-        minPrice = 1 -- Minimalios kainos riba centais
+        priceChange = { increase = 0.33, decrease = 0.34 }, -- 
+        minPrice = 1.00 -- 
     },
     ["bond2"] = { 
         label = "New Hanover Obligacijos",  -- Aprašymas: New Hanover Obligacijos yra paskolos vertybinis popierius kuriuo galima prekiauti biržoje ir už jos ribų.
-        price = 10.00, -- centai
+        price = 10.00,
         item = "bond2",
-        priceChange = { increase = 0.33, decrease = 0.34 }, -- Centai
-        minPrice = 1 -- Minimalios kainos riba centais
+        priceChange = { increase = 0.33, decrease = 0.34 },
+        minPrice = 1.00 -- 
     },
     ["bond3"] = { 
         label = "Cornwall Co. Akcijos",  --- Aprašymas: Cornwall Co. Akcijos yra paskolos vertybinis popierius kuriuo galima prekiauti biržoje ir už jos ribų.
-        price = 10.00, -- centai
+        price = 10.00,
         item = "bond3",
-        priceChange = { increase = 0.1, decrease = 0.11 }, -- Centai
-        minPrice = 1 -- Minimalios kainos riba centais
+        priceChange = { increase = 0.1, decrease = 0.11 },
+        minPrice = 1.00 -- 
     }
 }
 
@@ -65,7 +65,4 @@ Config.Translations = {
 
 
 
-Config.cooldownTime = 3 --- Ribinės vertės
--- Mažiems serveriams (iki 20 žaidėjų):     5–10 sekundžių: Greitas atnaujinimas yra saugus, nes serverio apkrova maža.
--- Vidutiniams serveriams (20–50 žaidėjų):     15–30 sekundžių: Subalansuota apkrovos ir reagavimo laiko riba.
--- Dideliems serveriams (50+ žaidėjų):     30–60 sekundži: Rekomenduojama riboti apkrovą ilgesniu intervalu.
+Config.cooldownTime = 0.5 --- Seconds
