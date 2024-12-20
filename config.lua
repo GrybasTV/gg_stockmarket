@@ -26,23 +26,23 @@ BlipData = {
 Config.Stocks = {
     ["bond1"] = { 
         label = "West Elizabeth Obligacijos", -- Aprašymas: West Elizabeth Obligacijos yra paskolos vertybinis popierius kuriuo galima prekiauti biržoje ir už jos ribų.
-        price = 1000, -- centai
+        price = 10.00, -- centai
         item = "bond1",
-        priceChange = { increase = 33, decrease = 34 }, -- Centai
+        priceChange = { increase = 0.33, decrease = 0.34 }, -- Centai
         minPrice = 1 -- Minimalios kainos riba centais
     },
     ["bond2"] = { 
         label = "New Hanover Obligacijos",  -- Aprašymas: New Hanover Obligacijos yra paskolos vertybinis popierius kuriuo galima prekiauti biržoje ir už jos ribų.
-        price = 1000, -- centai
+        price = 10.00, -- centai
         item = "bond2",
-        priceChange = { increase = 33, decrease = 34 }, -- Centai
+        priceChange = { increase = 0.33, decrease = 0.34 }, -- Centai
         minPrice = 1 -- Minimalios kainos riba centais
     },
     ["bond3"] = { 
         label = "Cornwall Co. Akcijos",  --- Aprašymas: Cornwall Co. Akcijos yra paskolos vertybinis popierius kuriuo galima prekiauti biržoje ir už jos ribų.
-        price = 1000, -- centai
+        price = 10.00, -- centai
         item = "bond3",
-        priceChange = { increase = 10, decrease = 11 }, -- Centai
+        priceChange = { increase = 0.1, decrease = 0.11 }, -- Centai
         minPrice = 1 -- Minimalios kainos riba centais
     }
 }

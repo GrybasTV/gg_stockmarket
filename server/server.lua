@@ -8,6 +8,30 @@ end)
 
 VorpInv = exports.vorp_inventory:vorp_inventoryApi()
 
+-- Sukuriame duomenų bazės lentelę jei ji nėra
+MySQL.ready(function()
+    MySQL.Async.execute([[
+        CREATE TABLE IF NOT EXISTS stocks (
+            stock_id VARCHAR(50) PRIMARY KEY,
+            price DECIMAL(10, 2) NOT NULL
+        )
+    ]], {})
+end)
+
+-- Įkeliame pradinius duomenis jei lentelė buvo sukurta
+MySQL.ready(function()
+    MySQL.Async.fetchAll('SELECT COUNT(*) AS count FROM stocks', {}, function(result)
+        if result[1].count == 0 then
+            for stockId, stock in pairs(Config.Stocks) do
+                MySQL.Async.execute('INSERT INTO stocks (stock_id, price) VALUES (@stock_id, @price)', {
+                    stock_id = stockId, price = stock.price
+                })
+            end
+            print("[Stock Market] Pradiniai duomenys įkelti.")
+        end
+    end)
+end)
+
 -- Užkrauname kainas iš duomenų bazės
 MySQL.ready(function()
     MySQL.Async.fetchAll('SELECT stock_id, price FROM stocks', {}, function(results)
@@ -28,7 +52,7 @@ local function updatePricesForAll()
     TriggerClientEvent('stockmarket:updatePrices', -1, prices)
 end
 
--- Kainų užklausimas iš serverio
+-- Užklausos įvykis
 RegisterServerEvent('stockmarket:requestPrices')
 AddEventHandler('stockmarket:requestPrices', function()
     local _source = source
@@ -82,7 +106,7 @@ AddEventHandler('stockmarket:buyStock', function(stockId, amount)
     local totalCost = 0
 
     for i = 1, amount do
-        totalCost = totalCost + (currentPrice / 100)
+        totalCost = totalCost + currentPrice
         currentPrice = currentPrice + stock.priceChange.increase
     end
 
@@ -126,7 +150,7 @@ AddEventHandler('stockmarket:sellStock', function(stockId, amount)
     local totalEarnings = 0
 
     for i = 1, amount do
-        totalEarnings = totalEarnings + (currentPrice / 100)
+        totalEarnings = totalEarnings + currentPrice
         currentPrice = math.max(stock.minPrice, currentPrice - stock.priceChange.decrease)
     end
 

@@ -43,6 +43,10 @@ local function freezePlayer(toggle)
     end
 end
 
+local function requestPricesFromServer()
+    TriggerServerEvent('stockmarket:requestPrices')
+end
+
 -- Funkcija rodyti 3D tekstą
 local function DrawText3D(x, y, z, text)
     local onScreen, _x, _y = GetScreenCoordFromWorldCoord(x, y, z)
@@ -55,24 +59,22 @@ local function DrawText3D(x, y, z, text)
     end
 end
 
--- Funkcija rodyti prompt su kainomis
+-- Funkcija rodyti kainas iš esamos lentelės
 local function displayPromptWithPrices()
     local location = Config.StockMarketLocation
     local text = Config.StockMarketLocation.promptText
 
     for stockId, stock in pairs(Config.Stocks) do
         local prices = currentStockPrices[stockId] or { buy = stock.price, sell = stock.price }
-        text = text .. string.format("\n%s: $%.2f/$%.2f", stock.label, prices.buy / 100, prices.sell / 100)
+        text = text .. string.format("\n%s: $%.2f (Pirkti) / $%.2f (Parduoti)", stock.label, prices.buy, prices.sell)
     end
-    -- Citizen.Wait(500)
-    TriggerServerEvent('stockmarket:requestPrices')
+
     DrawText3D(location.x, location.y, location.z + 0.25, text)
 end
-
--- Funkcija atidaryti meniu
+-- Funkcija atidaryti meniu su nauja kainų užklausa
 local function openStockMarketMenu()
-    TriggerServerEvent('stockmarket:requestPrices') -- Prašome naujausių kainų iš serverio
-    Citizen.Wait(100)
+    requestPricesFromServer() -- Užklausiame naujausias kainas tik atidarant meniu
+    Citizen.Wait(100) -- Nedidelis laukimas, kad kainos būtų atnaujintos
 
     local elements = {}
     for stockId, stock in pairs(Config.Stocks) do
@@ -110,7 +112,7 @@ Citizen.CreateThread(function()
                 freezePlayer(true)
                 openStockMarketMenu()
             end
-            Citizen.Wait(0) -- Tik tuomet, kai žaidėjas arti
+            Citizen.Wait(0) -- Tikriname dažniau, kai žaidėjas arti
         else
             Citizen.Wait(500) -- Ilgesnis laukimas, kai žaidėjas toli
         end
