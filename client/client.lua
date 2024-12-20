@@ -3,16 +3,26 @@ local currentStockPrices = {}
 local MenuData = {}
 local initBlips = {}
 
+-- Translations
+local language = Config.Language or "en"
+if Config.Translations[language] then
+    Config.Translations = Config.Translations[language]
+else
+    print("Language not found. Defaulting to English.")
+    Config.Translations = Config.Translations["en"]
+end
+
 -- VORP Core ir Menu API inicijavimas
 TriggerEvent("getCore", function(core)
     VORPcore = core
 end)
 
+-- Menu API
 TriggerEvent("menuapi:getData", function(call)
     MenuData = call
 end)
 
--- Pranešimų sistema
+-- Notification system
 RegisterNetEvent('stockmarket:notify')
 AddEventHandler('stockmarket:notify', function(message, messageType)
     if messageType == "success" then
@@ -30,7 +40,7 @@ AddEventHandler('stockmarket:updatePrices', function(prices)
     currentStockPrices = prices
 end)
 
--- Funkcija užšaldyti žaidėją
+-- Function to freeze player
 local function freezePlayer(toggle)
     local playerPed = PlayerPedId()
     FreezeEntityPosition(playerPed, toggle)
@@ -46,7 +56,7 @@ local function requestPricesFromServer()
     TriggerServerEvent('stockmarket:requestPrices')
 end
 
--- Funkcija rodyti 3D tekstą
+-- Function to display 3D text
 local function DrawText3D(x, y, z, text)
     local onScreen, _x, _y = GetScreenCoordFromWorldCoord(x, y, z)
     if onScreen then
@@ -58,10 +68,10 @@ local function DrawText3D(x, y, z, text)
     end
 end
 
--- Funkcija rodyti kainas iš esamos lentelės
+-- Function to display prices from the current table
 local function displayPromptWithPrices()
     local location = Config.StockMarketLocation
-    local text = Config.StockMarketLocation.promptText
+    local text = Config.Translations.promptText
 
     for stockId, stock in pairs(Config.Stocks) do
         local prices = currentStockPrices[stockId] or { buy = stock.price, sell = stock.price }
@@ -70,7 +80,8 @@ local function displayPromptWithPrices()
 
     DrawText3D(location.x, location.y, location.z + 0.25, text)
 end
--- Funkcija atidaryti meniu su nauja kainų užklausa
+
+-- Function to open the menu with a new price request
 local function openStockMarketMenu()
     requestPricesFromServer() -- Užklausiame naujausias kainas tik atidarant meniu
     Citizen.Wait(100) -- Nedidelis laukimas, kad kainos būtų atnaujintos
@@ -97,7 +108,7 @@ local function openStockMarketMenu()
     end)
 end
 
--- Pagrindinė kilpa
+-- Main thread
 Citizen.CreateThread(function()
     local location = Config.StockMarketLocation
 
@@ -120,7 +131,7 @@ end)
 
 
 
--- Blipų kūrimas
+-- Creating blips
 Citizen.CreateThread(function()    
     for _, data in pairs(BlipData.blips) do
         local blipId = Citizen.InvokeNative(0x554D9D53F696D002, 1664425300, data.x, data.y, data.z)
@@ -132,7 +143,7 @@ Citizen.CreateThread(function()
     end
 end)
 
--- Blipų šalinimas resurso sustabdymo metu
+-- Removing blips when the resource stops
 AddEventHandler("onResourceStop", function(resourceName)
     if resourceName == GetCurrentResourceName() then
         for _, blip in pairs(initBlips) do

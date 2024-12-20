@@ -1,6 +1,16 @@
 local VorpCore = {}
 local VorpInv = {}
 local stockPrices = {}
+local cooldowns = {} --  cooldown for all players
+
+-- Translations
+local language = Config.Language or "en"
+if Config.Translations[language] then
+    Config.Translations = Config.Translations[language]
+else
+    print("Language not found. Defaulting to English.")
+    Config.Translations = Config.Translations["en"]
+end
 
 TriggerEvent("getCore", function(core)
     VorpCore = core
@@ -8,7 +18,7 @@ end)
 
 VorpInv = exports.vorp_inventory:vorp_inventoryApi()
 
--- Sukuriame duomenų bazės lentelę jei ji nėra
+-- Create the database table if it does not exist
 MySQL.ready(function()
     MySQL.Async.execute([[
         CREATE TABLE IF NOT EXISTS stocks (
@@ -18,7 +28,7 @@ MySQL.ready(function()
     ]], {})
 end)
 
--- Įkeliame pradinius duomenis jei lentelė buvo sukurta
+-- Load initial data if the table was created
 MySQL.ready(function()
     MySQL.Async.fetchAll('SELECT COUNT(*) AS count FROM stocks', {}, function(result)
         if result[1].count == 0 then
@@ -32,7 +42,7 @@ MySQL.ready(function()
     end)
 end)
 
--- Užkrauname kainas iš duomenų bazės
+-- Load prices from the database
 MySQL.ready(function()
     MySQL.Async.fetchAll('SELECT stock_id, price FROM stocks', {}, function(results)
         for _, row in pairs(results) do
@@ -41,7 +51,7 @@ MySQL.ready(function()
     end)
 end)
 
--- Funkcija atnaujinti kainas visiems klientams
+-- Function to update prices for all clients
 local function updatePricesForAll()
     local prices = {}
     for stockId, stock in pairs(Config.Stocks) do
@@ -52,7 +62,7 @@ local function updatePricesForAll()
     TriggerClientEvent('stockmarket:updatePrices', -1, prices)
 end
 
--- Užklausos įvykis
+-- Request event
 RegisterServerEvent('stockmarket:requestPrices')
 AddEventHandler('stockmarket:requestPrices', function()
     local _source = source
@@ -65,10 +75,7 @@ AddEventHandler('stockmarket:requestPrices', function()
     TriggerClientEvent('stockmarket:updatePrices', _source, prices)
 end)
 
--- Pirkimo funkcija
-local cooldowns = {} -- Bendras cooldown visiems žaidėjams
-
--- Funkcija patikrinti cooldown
+-- Function to check cooldown
 local function isOnCooldown(playerId)
     local currentTime = GetGameTimer()
     if cooldowns[playerId] and currentTime - cooldowns[playerId] < Config.cooldownTime * 1000 then
@@ -77,17 +84,17 @@ local function isOnCooldown(playerId)
     return false, 0
 end
 
--- Funkcija atnaujinti cooldown
+-- Function to update cooldown
 local function setCooldown(playerId)
     cooldowns[playerId] = GetGameTimer()
 end
 
--- Pirkimo funkcija
+-- Purchase function
 RegisterServerEvent('stockmarket:buyStock')
 AddEventHandler('stockmarket:buyStock', function(stockId, amount)
     local _source = source
 
-    -- Bendras cooldown tikrinimas
+    -- General cooldown check
     local onCooldown, remainingTime = isOnCooldown(_source)
     if onCooldown then
         TriggerClientEvent('stockmarket:notify', _source, Config.Translations.cooldownNotification:format(remainingTime), "error")
@@ -126,8 +133,7 @@ AddEventHandler('stockmarket:buyStock', function(stockId, amount)
 end)
 
 
-
--- Pardavimo funkcija
+-- Sell function
 RegisterServerEvent('stockmarket:sellStock')
 AddEventHandler('stockmarket:sellStock', function(stockId, amount)
     local _source = source
@@ -155,7 +161,7 @@ AddEventHandler('stockmarket:sellStock', function(stockId, amount)
         sellPrice = math.max(stock.minPrice, sellPrice - stock.priceChange.decrease)
     end
 
-    -- Atnaujinkite buyPrice po pardavimo
+    -- Update buyPrice after selling
     local newBuyPrice = math.max(stock.minPrice, buyPrice - (stock.priceChange.decrease * amount))
     stockPrices[stockId] = newBuyPrice
 

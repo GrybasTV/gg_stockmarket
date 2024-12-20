@@ -10,19 +10,25 @@ rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aw
 
 -- Serverio skriptai
 server_scripts {
-    '@mysql-async/lib/MySQL.lua', -- Užtikrina MySQL ryšį
-    'config.lua', -- Konfigūracijos failas
+    '@mysql-async/lib/MySQL.lua', -- Užtikrina MySQL ryšį   
     'server/server.lua' -- Serverio logika
 }
 
 -- Kliento skriptai
-client_scripts {
-    'config.lua', -- Konfigūracijos failas
-    'client/client.lua' -- Kliento logika
+client_scripts {   
+    'client/client.lua', -- Kliento logika
 }
+
+shared_script {
+    'config.lua', -- Konfigūracijos failas
+    'shared/language.lua' -- Kalbos failas
+}
+
+
 
 -- Priklausomybės
 dependencies {
     'vorp_core', -- Reikalingas VORP Core framework
-    'vorp_inventory' -- Reikalingas VORP Inventory sistema
+    'vorp_inventory', -- Reikalingas VORP Inventory sistema
+    'vorp_menu'-- Reikalingas VORP Menu sistema
 }
