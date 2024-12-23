@@ -3,15 +3,6 @@ local currentStockPrices = {}
 local MenuData = {}
 local initBlips = {}
 
--- Translations
-local language = Config.Language or "en"
-if Config.Translations[language] then
-    Config.Translations = Config.Translations[language]
-else
-    print("Language not found. Defaulting to English.")
-    Config.Translations = Config.Translations["en"]
-end
-
 -- VORP Core ir Menu API inicijavimas
 TriggerEvent("getCore", function(core)
     VORPcore = core
@@ -21,6 +12,22 @@ end)
 TriggerEvent("menuapi:getData", function(call)
     MenuData = call
 end)
+
+
+Citizen.CreateThread(function()
+    local language = Config.Language or "en"
+    if Config.Translations[language] then
+        for k, v in pairs(Config.Translations[language]) do
+            Config.Translations[k] = v
+        end
+    else
+        print("Language not found. Defaulting to English.")
+        for k, v in pairs(Config.Translations["en"]) do
+            Config.Translations[k] = v
+        end
+    end
+end)
+
 
 -- Notification system
 RegisterNetEvent('stockmarket:notify')

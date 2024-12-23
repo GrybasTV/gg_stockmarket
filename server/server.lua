@@ -3,20 +3,12 @@ local VorpInv = {}
 local stockPrices = {}
 local cooldowns = {} --  cooldown for all players
 
--- Translations
-local language = Config.Language or "en"
-if Config.Translations[language] then
-    Config.Translations = Config.Translations[language]
-else
-    print("Language not found. Defaulting to English.")
-    Config.Translations = Config.Translations["en"]
-end
-
 TriggerEvent("getCore", function(core)
     VorpCore = core
 end)
 
 VorpInv = exports.vorp_inventory:vorp_inventoryApi()
+
 
 -- Create the database table if it does not exist
 MySQL.ready(function()

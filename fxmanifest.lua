@@ -8,10 +8,14 @@ version '1.0.0'
 rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships.'
 
 
+shared_script {    
+    'config.lua', -- Konfigūracijos failas    
+}
+
 -- Serverio skriptai
 server_scripts {
     '@mysql-async/lib/MySQL.lua', -- Užtikrina MySQL ryšį   
-    'server/server.lua' -- Serverio logika
+    'server/server.lua', -- Serverio logika
 }
 
 -- Kliento skriptai
@@ -19,10 +23,7 @@ client_scripts {
     'client/client.lua', -- Kliento logika
 }
 
-shared_script {
-    'config.lua', -- Konfigūracijos failas
-    'shared/language.lua' -- Kalbos failas
-}
+
 
 
 
