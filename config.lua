@@ -39,12 +39,12 @@ Config.keys = {
     ["G"] = 0x760A9C6F -- Menu open key
 }
 
--- Prekybos vieta
+-- Trading location
 Config.StockMarketLocation = {  --- Only one location is supported
     x = -819.28, y = -1278.56, z = 43.59,
 }
 
--- Blipas
+-- Blip
 BlipData = {
     blips = {
         {name = "Stock Market",  
