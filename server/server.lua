@@ -3,6 +3,10 @@ local VorpInv = {}
 local stockPrices = {}
 local cooldowns = {} --  cooldown for all players
 
+-- Initialize translations
+local language = Config.Language or "en"
+local Translations = Config.Translations[language] or Config.Translations["en"]
+
 TriggerEvent("getCore", function(core)
     VorpCore = core
 end)
@@ -89,7 +93,7 @@ AddEventHandler('stockmarket:buyStock', function(stockId, amount)
     -- General cooldown check
     local onCooldown, remainingTime = isOnCooldown(_source)
     if onCooldown then
-        TriggerClientEvent('stockmarket:notify', _source, Config.Translations.cooldownNotification:format(remainingTime), "error")
+        TriggerClientEvent('stockmarket:notify', _source, Translations.cooldownNotification:format(remainingTime), "error")
         return
     end
 
@@ -117,10 +121,10 @@ AddEventHandler('stockmarket:buyStock', function(stockId, amount)
             ['@id'] = stockId
         })
         VorpInv.addItem(_source, stock.item, amount)
-        TriggerClientEvent('stockmarket:notify', _source, Config.Translations.buySuccess:format(amount, stock.label, totalCost), "success")
+        TriggerClientEvent('stockmarket:notify', _source, Translations.buySuccess:format(amount, stock.label, totalCost), "success")
         updatePricesForAll()
     else
-        TriggerClientEvent('stockmarket:notify', _source, Config.Translations.notEnoughMoney, "error")
+        TriggerClientEvent('stockmarket:notify', _source, Translations.notEnoughMoney, "error")
     end
 end)
 
@@ -133,7 +137,7 @@ AddEventHandler('stockmarket:sellStock', function(stockId, amount)
     -- Bendras cooldown tikrinimas
     local onCooldown, remainingTime = isOnCooldown(_source)
     if onCooldown then
-        TriggerClientEvent('stockmarket:notify', _source, Config.Translations.cooldownNotification:format(remainingTime), "error")
+        TriggerClientEvent('stockmarket:notify', _source, Translations.cooldownNotification:format(remainingTime), "error")
         return
     end
 
@@ -164,10 +168,10 @@ AddEventHandler('stockmarket:sellStock', function(stockId, amount)
             ['@price'] = newBuyPrice,
             ['@id'] = stockId
         })
-        TriggerClientEvent('stockmarket:notify', _source, Config.Translations.sellSuccess:format(amount, stock.label, totalEarnings), "success")
+        TriggerClientEvent('stockmarket:notify', _source, Translations.sellSuccess:format(amount, stock.label, totalEarnings), "success")
         updatePricesForAll()
     else
-        TriggerClientEvent('stockmarket:notify', _source, Config.Translations.notEnoughItems, "error")
+        TriggerClientEvent('stockmarket:notify', _source, Translations.notEnoughItems, "error")
     end
 end)
 

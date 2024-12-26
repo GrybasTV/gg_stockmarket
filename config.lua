@@ -1,6 +1,6 @@
 Config = {}
 
-Config.Language = "en" -- Pasirinkite numatytąją kalbą
+Config.Language = "lt" -- Pasirinkite numatytąją kalbą
 
 Config.Translations = {
     en = {
@@ -58,21 +58,21 @@ BlipData = {
 
 Config.Stocks = {
     ["bond1"] = { 
-        label = "West Elizabeth Bonds", -- Label
+        label = "West Elizabeth Obligacijos", -- Label
         price = 10.00, -- Initial price
         item = "bond1", -- Iten name from db
         priceChange = { increase = 0.33, decrease = 0.34 }, -- Price change affter each transaction
         minPrice = 0.01 -- Market will crash on this price. Helps avoid negative value
     },
     ["bond2"] = { 
-        label = "New Hanover Bonds",  
+        label = "New Hanover Obligacijos",  
         price = 10.00,
         item = "bond2",
         priceChange = { increase = 0.33, decrease = 0.34 },
         minPrice = 0.01 -- 
     },
     ["bond3"] = { 
-        label = "Cornwall Co. Stocks",  --- 
+        label = "Cornwall Co. Akcijos",  --- 
         price = 10.00,
         item = "bond3",
         priceChange = { increase = 0.1, decrease = 0.11 },
