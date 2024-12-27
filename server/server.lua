@@ -4,8 +4,26 @@ local stockPrices = {}
 local cooldowns = {} --  cooldown for all players
 
 -- Initialize translations
-local language = Config.Language or "en"
-local Translations = Config.Translations[language] or Config.Translations["en"]
+local Translations = {}
+
+Citizen.CreateThread(function()
+    local language = Config.Language or "en"
+    Translations = Config.Translations[language] or Config.Translations["en"]
+    -- print("Vertimai serverio pusėje įkelti:", json.encode(Translations))
+end)
+
+
+setmetatable(Translations, {
+    __index = function(_, key)
+        local language = Config.Language or "en"
+        local translation = Config.Translations[language][key] or Config.Translations["en"][key]
+        if not translation then
+            print(string.format("No translations for '%s' .", key))
+            return key -- Grąžins raktą kaip atsarginį vertimą
+        end
+        return translation
+    end
+})
 
 TriggerEvent("getCore", function(core)
     VorpCore = core
@@ -93,7 +111,7 @@ AddEventHandler('stockmarket:buyStock', function(stockId, amount)
     -- General cooldown check
     local onCooldown, remainingTime = isOnCooldown(_source)
     if onCooldown then
-        TriggerClientEvent('stockmarket:notify', _source, Translations.cooldownNotification:format(remainingTime), "error")
+        TriggerClientEvent('stockmarket:notify', _source, Translations.cooldownNotification:format(remainingTime), "red")
         return
     end
 

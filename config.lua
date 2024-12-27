@@ -22,16 +22,16 @@ Config.Translations = {
         blipname = "Akciju Birža",
         menuTitle = "Birža",
         buyOption = "---Pirkti %s ---",
-        sellOption = "Parduoti %s",
-        notEnoughMoney = "Neturite pakankamai pinigu!",
+        sellOption = "Parduoti %s",        
         noSpaceInInventory = "Neturite vietos inventoriuje!",
         itemNotFound = "Neturite prekes!",
         notEnoughItems = "Neturite ka parduoti!",
-        priceTooLow = "Nera kam parduoti!",
-        buySuccess = "Pirkote %d x %s už $%.2f",
-        sellSuccess = "Parduota %d x %s už $%.2f",
+        priceTooLow = "Nera kam parduoti!", 
         cooldownNotification = "Prašome palaukti %d sekundžiu",
-        promptText = "Spauskite [G] prekiauti"
+        promptText = "Spauskite [G] prekiauti",
+        notEnoughMoney = "Neturite pakankamai pinigu!",
+        buySuccess = "Pirkote %d x %s už $%.2f",
+        sellSuccess = "Parduota %d x %s už $%.2f"
     }
 }
 

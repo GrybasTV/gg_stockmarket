@@ -30,11 +30,14 @@ end)
 
 
 -- Notification system
+
 RegisterNetEvent('stockmarket:notify')
 AddEventHandler('stockmarket:notify', function(message, messageType)
+    local _source = source
+    VorpCore = VORPcore
     if messageType == "success" then
         TriggerEvent('vorp:TipRight', message, 5000)
-    elseif messageType == "error" then
+    elseif messageType == "error" then        
         TriggerEvent('vorp:TipRight', message, 5000)
     else
         TriggerEvent('vorp:TipRight', message, 5000)
