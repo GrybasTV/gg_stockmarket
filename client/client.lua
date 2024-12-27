@@ -1,7 +1,6 @@
 
 local currentStockPrices = {}
 local MenuData = {}
-local initBlips = {}
 local blips = {}
 
 -- VORP Core ir Menu API inicijavimas
@@ -187,7 +186,7 @@ end)
 -- Removing blips when the resource stops
 AddEventHandler("onResourceStop", function(resourceName)
     if resourceName == GetCurrentResourceName() then
-        for _, blip in pairs(initBlips) do
+        for _, blip in pairs(blips) do
             RemoveBlip(blip)
         end
     end
