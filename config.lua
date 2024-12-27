@@ -40,28 +40,33 @@ Config.keys = {
 }
 
 -- Trading location
-Config.StockMarketLocation = {  --- Only one location is supported
-    x = -819.28, y = -1278.56, z = 43.59,
+Config.StockMarketLocations = {  -- 
+    {
+        name = "West Elizabeth Akciju Birža ", -- blip name
+        x = -819.28, y = -1278.56, z = 43.59,
+        stocks = { "bond1", "bond3", "goldnugget", "goldbar"} -- Only these stocks are available at this location
+    },
+    {
+        name = "New Hanover Akciju Birža",
+        x = -305.26, y = 775.42, z = 118.7,
+        stocks = { "bond2", "bond3", "goldnugget", "goldbar"} 
+    },
+    
 }
 
--- Blip
-BlipData = {
-    blips = {
-        {name = "Stock Market",  
-        sprite = -1567930587, --  https://filmcrz.github.io/blips/
-        x = Config.StockMarketLocation.x, 
-        y = Config.StockMarketLocation.y, 
-        z = Config.StockMarketLocation.z, 
-        color = 'BLIP_MODIFIER_MP_COLOR_32'},
-    }
+
+Config.Blip = {
+    sprite = -1567930587, -- https://filmcrz.github.io/blips/
+    color = 'BLIP_MODIFIER_MP_COLOR_32' -- Spalva
 }
+
 
 Config.Stocks = {
-    ["bond1"] = { 
+    ["bond1"] = { -- same as item
         label = "West Elizabeth Obligacijos", -- Label
         price = 10.00, -- Initial price
         item = "bond1", -- Iten name from db
-        priceChange = { increase = 0.33, decrease = 0.34 }, -- Price change affter each transaction
+        priceChange = { increase = 0.33, decrease = 0.34 }, -- Price change affter each transaction // 
         minPrice = 0.01 -- Market will crash on this price. Helps avoid negative value
     },
     ["bond2"] = { 
@@ -77,7 +82,22 @@ Config.Stocks = {
         item = "bond3",
         priceChange = { increase = 0.1, decrease = 0.11 },
         minPrice = 0.01 -- 
+    },
+    ["goldnugget"] = { 
+        label = "Aukso Grynuoliai",  --- 
+        price = 1.00,
+        item = "goldnugget",
+        priceChange = { increase = 0.01, decrease = 0.01 }, 
+        minPrice = 0.01 -- 
+    },
+    ["goldbar"] = { 
+        label = "Aukso Luitai",  --- 
+        price = 100.00,
+        item = "goldbar",
+        priceChange = { increase = 0.50, decrease = 0.50 },
+        minPrice = 1.00 -- 
     }
+
 }
 
 

@@ -32,15 +32,32 @@ end)
 VorpInv = exports.vorp_inventory:vorp_inventoryApi()
 
 
--- Create the database table if it does not exist
+-- Sukurkite lentelę, jei jos nėra, ir pridėkite trūkstamus įrašus
 MySQL.ready(function()
+    -- Lentelės kūrimas
     MySQL.Async.execute([[
         CREATE TABLE IF NOT EXISTS stocks (
             stock_id VARCHAR(50) PRIMARY KEY,
             price DECIMAL(10, 2) NOT NULL
         )
     ]], {})
+
+    -- Patikrinkite ir pridėkite trūkstamus įrašus
+    for stockId, stock in pairs(Config.Stocks) do
+        MySQL.Async.fetchScalar('SELECT COUNT(*) FROM stocks WHERE stock_id = @stock_id', {
+            ['@stock_id'] = stockId
+        }, function(count)
+            if count == 0 then
+                MySQL.Async.execute('INSERT INTO stocks (stock_id, price) VALUES (@stock_id, @price)', {
+                    ['@stock_id'] = stockId,
+                    ['@price'] = stock.price
+                })
+            end
+        end)
+    end
 end)
+
+
 
 -- Load initial data if the table was created
 MySQL.ready(function()
@@ -103,25 +120,51 @@ local function setCooldown(playerId)
     cooldowns[playerId] = GetGameTimer()
 end
 
+-- Tikrina, ar lentelėje yra nurodyta reikšmė
+function table.contains(table, element)
+    for _, value in pairs(table) do
+        if value == element then
+            return true
+        end
+    end
+    return false
+end
+
 -- Purchase function
 RegisterServerEvent('stockmarket:buyStock')
-AddEventHandler('stockmarket:buyStock', function(stockId, amount)
+AddEventHandler('stockmarket:buyStock', function(stockId, amount, locationName)
     local _source = source
 
     -- General cooldown check
     local onCooldown, remainingTime = isOnCooldown(_source)
     if onCooldown then
-        TriggerClientEvent('stockmarket:notify', _source, Translations.cooldownNotification:format(remainingTime), "red")
+        TriggerClientEvent('stockmarket:notify', _source, Translations.cooldownNotification:format(remainingTime), "error")
         return
     end
 
     -- Cooldown nustatymas
     setCooldown(_source)
 
+    -- Patikriname, ar akcija leidžiama pasirinktoje lokacijoje
+    local isStockValid = false
+    for _, location in pairs(Config.StockMarketLocations) do
+        if location.name == locationName and table.contains(location.stocks, stockId) then
+            isStockValid = true
+            break
+        end
+    end
+
+    if not isStockValid then
+        TriggerClientEvent('stockmarket:notify', _source, "Ši akcija neveikia šioje vietoje!", "error")
+        return
+    end
+
+    -- VORP vartotojo ir pinigų informacija
     local User = VorpCore.getUser(_source)
-    local Character = User.getUsedCharacter
+    local Character = User.getUsedCharacter -- Pataisyta
     local playerMoney = Character.money
 
+    -- Akcijos logika
     local stock = Config.Stocks[stockId]
     local currentPrice = stockPrices[stockId] or stock.price
     local totalCost = 0
@@ -131,25 +174,28 @@ AddEventHandler('stockmarket:buyStock', function(stockId, amount)
         currentPrice = currentPrice + stock.priceChange.increase
     end
 
+    -- Patikriname, ar žaidėjas turi pakankamai pinigų
     if playerMoney >= totalCost then
-        Character.removeCurrency(0, totalCost)
-        stockPrices[stockId] = currentPrice
+        -- Atnaujiname informaciją
+        Character.removeCurrency(0, totalCost) -- Pašaliname pinigus
+        stockPrices[stockId] = currentPrice -- Atnaujiname kainą
         MySQL.Async.execute('UPDATE stocks SET price = @price WHERE stock_id = @id', {
             ['@price'] = currentPrice,
             ['@id'] = stockId
         })
-        VorpInv.addItem(_source, stock.item, amount)
+
+        VorpInv.addItem(_source, stock.item, amount) -- Pridedame akcijas į inventorių
         TriggerClientEvent('stockmarket:notify', _source, Translations.buySuccess:format(amount, stock.label, totalCost), "success")
-        updatePricesForAll()
+        updatePricesForAll() -- Atnaujiname kainas visiems klientams
     else
         TriggerClientEvent('stockmarket:notify', _source, Translations.notEnoughMoney, "error")
     end
 end)
 
 
--- Sell function
+
 RegisterServerEvent('stockmarket:sellStock')
-AddEventHandler('stockmarket:sellStock', function(stockId, amount)
+AddEventHandler('stockmarket:sellStock', function(stockId, amount, locationName)
     local _source = source
 
     -- Bendras cooldown tikrinimas
@@ -162,36 +208,59 @@ AddEventHandler('stockmarket:sellStock', function(stockId, amount)
     -- Cooldown nustatymas
     setCooldown(_source)
 
+    -- Patikriname, ar akcija galioja šioje lokacijoje
+    local isStockValid = false
+    for _, location in pairs(Config.StockMarketLocations) do
+        if location.name == locationName and table.contains(location.stocks, stockId) then
+            isStockValid = true
+            break
+        end
+    end
+
+    if not isStockValid then
+        TriggerClientEvent('stockmarket:notify', _source, "Ši akcija neveikia šioje vietoje!", "error")
+        return
+    end
+
+    -- Gauti vartotojo duomenis
     local User = VorpCore.getUser(_source)
     local Character = User.getUsedCharacter
-
     local stock = Config.Stocks[stockId]
     local buyPrice = stockPrices[stockId] or stock.price
     local sellPrice = math.max(stock.minPrice, buyPrice - stock.priceChange.decrease)
     local totalEarnings = 0
 
+    -- Apskaičiuojame pelną
     for i = 1, amount do
         totalEarnings = totalEarnings + sellPrice
         sellPrice = math.max(stock.minPrice, sellPrice - stock.priceChange.decrease)
     end
 
-    -- Update buyPrice after selling
+    -- Atnaujiname kainas po pardavimo
     local newBuyPrice = math.max(stock.minPrice, buyPrice - (stock.priceChange.decrease * amount))
     stockPrices[stockId] = newBuyPrice
 
+    -- Tikriname, ar žaidėjas turi pakankamai prekių inventoriuje
     if VorpInv.getItemCount(_source, stock.item) >= amount then
+        -- Pelnas žaidėjui ir inventoriaus atnaujinimas
         Character.addCurrency(0, totalEarnings)
         VorpInv.subItem(_source, stock.item, amount)
+
+        -- Atnaujiname duomenų bazę
         MySQL.Async.execute('UPDATE stocks SET price = @price WHERE stock_id = @id', {
             ['@price'] = newBuyPrice,
             ['@id'] = stockId
         })
+
+        -- Pranešimas apie sėkmingą pardavimą
         TriggerClientEvent('stockmarket:notify', _source, Translations.sellSuccess:format(amount, stock.label, totalEarnings), "success")
         updatePricesForAll()
     else
+        -- Klaida, jei žaidėjas neturi pakankamai prekių
         TriggerClientEvent('stockmarket:notify', _source, Translations.notEnoughItems, "error")
     end
 end)
+
 
 
 

@@ -2,6 +2,7 @@
 local currentStockPrices = {}
 local MenuData = {}
 local initBlips = {}
+local blips = {}
 
 -- VORP Core ir Menu API inicijavimas
 TriggerEvent("getCore", function(core)
@@ -13,6 +14,7 @@ TriggerEvent("menuapi:getData", function(call)
     MenuData = call
 end)
 
+-- Vertimai
 
 Citizen.CreateThread(function()
     local language = Config.Language or "en"
@@ -27,7 +29,6 @@ Citizen.CreateThread(function()
         end
     end
 end)
-
 
 -- Notification system
 
@@ -80,26 +81,47 @@ end
 
 -- Function to display prices from the current table
 local function displayPromptWithPrices()
-    local location = Config.StockMarketLocation
-    local text = Config.Translations.promptText
+    local playerCoords = GetEntityCoords(PlayerPedId())
+    local closestLocation = nil
+    local closestDistance = nil
 
-    for stockId, stock in pairs(Config.Stocks) do
-        local prices = currentStockPrices[stockId] or { buy = stock.price, sell = stock.price }
-        text = text .. string.format("\n%s: $%.2f/ $%.2f", stock.label, prices.buy, prices.sell)
+    -- Randame artimiausią lokaciją
+    for _, location in pairs(Config.StockMarketLocations) do
+        local distance = Vdist(playerCoords, location.x, location.y, location.z)
+        if not closestDistance or distance < closestDistance then
+            closestDistance = distance
+            closestLocation = location
+        end
     end
 
-    DrawText3D(location.x, location.y, location.z + 0.25, text)
+    -- Jei artimiausia lokacija yra pakankamai arti, rodome prompt su tam tikromis akcijomis
+    if closestLocation and closestDistance < 2.0 then
+        local text = Config.Translations.promptText
+        for _, stockId in pairs(closestLocation.stocks) do
+            local stock = Config.Stocks[stockId]
+            if stock then
+                local prices = currentStockPrices[stockId] or { buy = stock.price, sell = stock.price }
+                text = text .. string.format("\n%s: $%.2f/ $%.2f", stock.label, prices.buy, prices.sell)
+            end
+        end
+        DrawText3D(closestLocation.x, closestLocation.y, closestLocation.z + 0.25, text)
+    end
 end
 
+
+
 -- Function to open the menu with a new price request
-local function openStockMarketMenu()
-    requestPricesFromServer() -- Užklausiame naujausias kainas tik atidarant meniu
-    Citizen.Wait(100) -- Nedidelis laukimas, kad kainos būtų atnaujintos
+local function openStockMarketMenu(location)
+    requestPricesFromServer() -- Užklausiame kainų iš serverio
+    Citizen.Wait(100) -- Nedidelis laukimas
 
     local elements = {}
-    for stockId, stock in pairs(Config.Stocks) do
-        table.insert(elements, { label = string.format(Config.Translations.buyOption, stock.label), value = "buy_" .. stockId })
-        table.insert(elements, { label = string.format(Config.Translations.sellOption, stock.label), value = "sell_" .. stockId })
+    for _, stockId in pairs(location.stocks) do
+        local stock = Config.Stocks[stockId]
+        if stock then
+            table.insert(elements, { label = string.format(Config.Translations.buyOption, stock.label), value = "buy_" .. stockId })
+            table.insert(elements, { label = string.format(Config.Translations.sellOption, stock.label), value = "sell_" .. stockId })
+        end
     end
 
     MenuData.Open('default', GetCurrentResourceName(), 'stock_menu', {
@@ -108,9 +130,9 @@ local function openStockMarketMenu()
         elements = elements
     }, function(data, menu)
         if data.current.value:find("buy_") then
-            TriggerServerEvent('stockmarket:buyStock', data.current.value:gsub("buy_", ""), 1)
+            TriggerServerEvent('stockmarket:buyStock', data.current.value:gsub("buy_", ""), 1, location.name)
         elseif data.current.value:find("sell_") then
-            TriggerServerEvent('stockmarket:sellStock', data.current.value:gsub("sell_", ""), 1)
+            TriggerServerEvent('stockmarket:sellStock', data.current.value:gsub("sell_", ""), 1, location.name)
         end
     end, function(data, menu)
         menu.close()
@@ -118,40 +140,49 @@ local function openStockMarketMenu()
     end)
 end
 
+
 -- Main thread
 Citizen.CreateThread(function()
-    local location = Config.StockMarketLocation
-
     while true do
         local playerCoords = GetEntityCoords(PlayerPedId())
-        local distance = Vdist(playerCoords, location.x, location.y, location.z)
+        local isNearLocation = false
 
-        if distance < 2.0 then
-            displayPromptWithPrices()
-            if IsControlJustReleased(0, Config.keys["G"]) then
-                freezePlayer(true)
-                openStockMarketMenu()
+        for _, location in pairs(Config.StockMarketLocations) do
+            local distance = Vdist(playerCoords, location.x, location.y, location.z)
+
+            if distance < 2.0 then
+                displayPromptWithPrices(location) -- Parodome 3D tekstą
+                if IsControlJustReleased(0, Config.keys["G"]) then
+                    freezePlayer(true)
+                    openStockMarketMenu(location) -- Perdavimo lokacija į meniu atidarymą
+                end
+                isNearLocation = true
+                Citizen.Wait(0) -- Dažnas tikrinimas, kai arti
+                break
             end
-            Citizen.Wait(0) -- Tikriname dažniau, kai žaidėjas arti
-        else
-            Citizen.Wait(500) -- Ilgesnis laukimas, kai žaidėjas toli
+        end
+
+        if not isNearLocation then
+            Citizen.Wait(1000) -- Retesnis tikrinimas, kai toli
         end
     end
 end)
 
 
 
+
 -- Creating blips
-Citizen.CreateThread(function()    
-    for _, data in pairs(BlipData.blips) do
-        local blipId = Citizen.InvokeNative(0x554D9D53F696D002, 1664425300, data.x, data.y, data.z)
-        SetBlipSprite(blipId, data.sprite, 1)
-        Citizen.InvokeNative(0x662D364ABF16DE2F, blipId, data.color or 0)
-        local varString = CreateVarString(10, 'LITERAL_STRING', data.name)
-        Citizen.InvokeNative(0x9CB1A1623062F402, blipId, varString)
-        table.insert(initBlips, blipId)
+Citizen.CreateThread(function()
+    for _, location in pairs(Config.StockMarketLocations) do
+        local blip = Citizen.InvokeNative(0x554D9D53F696D002, 1664425300, location.x, location.y, location.z) -- Blip handle
+        SetBlipSprite(blip, Config.Blip.sprite, 1) -- Ikona
+        SetBlipScale(blip, 1.0) -- Blip size
+        Citizen.InvokeNative(0x9CB1A1623062F402, blip, location.name) -- Nustatome pavadinimą
+        Citizen.InvokeNative(0x662D364ABF16DE2F, blip, Config.Blip.color) -- Spalva
+        table.insert(blips, blip)
     end
 end)
+
 
 -- Removing blips when the resource stops
 AddEventHandler("onResourceStop", function(resourceName)
