@@ -118,12 +118,53 @@ function table.contains(table, element)
 end
 
 --Discord hook
-function sendDiscordMessage(message)
-    local webhookUrl = Config.webhookUrl
-    if webhookUrl then
-        PerformHttpRequest(webhookUrl, function(err, text, headers) end, 'POST', json.encode({ content = message }), { ['Content-Type'] = 'application/json' })
+local function sendSummaryToDiscord()
+    -- Generate a summary message
+    local message = "**Current Stock Prices**\n"
+    for stockId, stock in pairs(Config.Stocks) do
+        local buyPrice = stockPrices[stockId] or stock.price
+        local sellPrice = math.max(stock.minPrice, buyPrice - stock.priceChange.decrease)
+        message = message .. string.format("📦 %s:\n  💰 Buy: $%.2f\n  💰 Sell: $%.2f\n\n", stock.label, buyPrice, sellPrice)
+    end
+
+    -- Send the message to Discord
+    if Config.discordWebhook then
+        local webhookUrl = Config.webhookUrl
+        if webhookUrl then
+            PerformHttpRequest(webhookUrl, function(err, text, headers) end, 'POST', json.encode({ content = message }), { ['Content-Type'] = 'application/json' })
+        end
     end
 end
+
+-- Schedule periodic Discord updates
+Citizen.CreateThread(function()
+    while true do
+        Wait(Config.DiscordUpdateInterval * 1000) -- Interval in seconds (convert to milliseconds)
+        sendSummaryToDiscord()
+    end
+end)
+
+-- Admin command to send a summary to Discord
+RegisterCommand(Config.Discordwebhookmanualcommand, function(source, args)
+    -- Tikriname, ar yra įjungta siuntimo funkcija
+    if not Config.discordWebhook then
+        print("^1[Stock Market]^7 Discord sending feature is disabled in the configuration.")
+        return
+    end
+    if source == 0 then -- RCON
+        print("^1[Stock Market]^7 Discord summary sent.")
+    else
+        local player = VorpCore.getUser(source)
+        if player then
+            if player.group.ranks["admin"] then
+                sendSummaryToDiscord()
+                TriggerClientEvent('vorp:TipBottom', source, 3000, "Discord summary sent.")
+            else
+                TriggerClientEvent('vorp:TipBottom', source, 3000, "Only admins can use this command.")
+            end
+        end
+    end
+end, false)
 
 --- taxAmount
 local function round(value, decimals)
@@ -211,9 +252,6 @@ AddEventHandler('stockmarket:buyStock', function(stockId, amount, locationName)
         TriggerClientEvent('stockmarket:notify', _source, string.format("%s: %.2f $", Translations.tax, taxAmount), "info")
         end
         updatePricesForAll() -- Atnaujiname kainas visiems klientams
-        ---- discord hook
-        local message = "----------\n" .. string.format("📦 %s: %s\n💰 %s: $%.2f", Translations.item, stock.label, Translations.price, totalCost)
-        sendDiscordMessage(message)
     else
         TriggerClientEvent('stockmarket:notify', _source, Translations.notEnoughMoney, "error")
     end
@@ -288,9 +326,6 @@ AddEventHandler('stockmarket:sellStock', function(stockId, amount, locationName)
             TriggerClientEvent('stockmarket:notify', _source, string.format("%s: %.2f $", Translations.tax, taxAmount), "info")
         end
         updatePricesForAll()
-        ---- discord hook
-        local message = string.format("----------\n📦 %s: %s\n💰 %s: $%.2f", Translations.item, stock.label, Translations.price, totalEarnings)
-        sendDiscordMessage(message)
     else
         -- Klaida, jei žaidėjas neturi pakankamai prekių
         TriggerClientEvent('stockmarket:notify', _source, Translations.notEnoughItems, "error")

@@ -4,8 +4,9 @@ Config = {}
 Config.discordWebhook = true
 Config.webhookUrl = "url"
 
-Config.Discordhookmesage = {
-}
+Config.DiscordUpdateInterval = 60 * 60 * 3 --- in seconds (3 hour) 
+Config.Discordwebhookmanualcommand = 'stocksummary'
+
 
 -- Tax
 Config.Tax = 1.00 -- Percentage of transaction as tax (e.g., 0.5% tax)
