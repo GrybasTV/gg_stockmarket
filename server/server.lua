@@ -119,22 +119,49 @@ end
 
 --Discord hook
 local function sendSummaryToDiscord()
-    -- Generate a summary message
-    local message = "**Current Stock Prices**\n"
+    local embed = {
+        title = "📈 Biržos Laikmatis - Current Stock Prices",
+        color = 0x00ff00, -- Pasirinkite norimą spalvą
+        fields = {}
+    }
+
+    -- Pridedame lentelės antraštę
+    table.insert(embed.fields, {
+        name = "**Item**",
+        value = "**🛒 Buy Price | 💰 Sell Price**",
+        inline = false
+    })
+
+    -- Pridedame kiekvieną atsargų įrašą
     for stockId, stock in pairs(Config.Stocks) do
         local buyPrice = stockPrices[stockId] or stock.price
         local sellPrice = math.max(stock.minPrice, buyPrice - stock.priceChange.decrease)
-        message = message .. string.format("📦 %s:\n  💰 Buy: $%.2f\n  💰 Sell: $%.2f\n\n", stock.label, buyPrice, sellPrice)
+        local buyPriceStr = string.format("$%.2f", buyPrice)
+        local sellPriceStr = string.format("$%.2f", sellPrice)
+        local value = string.format("%s | %s", buyPriceStr, sellPriceStr)
+        
+        table.insert(embed.fields, {
+            name = stock.label,
+            value = value,
+            inline = true
+        })
     end
 
-    -- Send the message to Discord
+    -- Siunčiame embed žinutę į Discord per webhook
     if Config.discordWebhook then
         local webhookUrl = Config.webhookUrl
         if webhookUrl then
-            PerformHttpRequest(webhookUrl, function(err, text, headers) end, 'POST', json.encode({ content = message }), { ['Content-Type'] = 'application/json' })
+            PerformHttpRequest(webhookUrl, 
+                function(err, text, headers) end, 
+                'POST', 
+                json.encode({ embeds = { embed } }), 
+                { ['Content-Type'] = 'application/json' }
+            )
         end
     end
 end
+
+
 
 -- Schedule periodic Discord updates
 Citizen.CreateThread(function()
@@ -146,7 +173,7 @@ end)
 
 -- Admin command to send a summary to Discord
 RegisterCommand(Config.Discordwebhookmanualcommand, function(source, args)
-    -- Tikriname, ar yra įjungta siuntimo funkcija
+    -- Check if the Discord sending feature is enabled
     if not Config.discordWebhook then
         print("^1[Stock Market]^7 Discord sending feature is disabled in the configuration.")
         return
@@ -154,14 +181,13 @@ RegisterCommand(Config.Discordwebhookmanualcommand, function(source, args)
     if source == 0 then -- RCON
         print("^1[Stock Market]^7 Discord summary sent.")
     else
-        local player = VorpCore.getUser(source)
-        if player then
-            if player.group.ranks["admin"] then
-                sendSummaryToDiscord()
-                TriggerClientEvent('vorp:TipBottom', source, 3000, "Discord summary sent.")
-            else
-                TriggerClientEvent('vorp:TipBottom', source, 3000, "Only admins can use this command.")
-            end
+        local player = VorpCore.getUser(source).getUsedCharacter
+        local group = player.group
+        if group == "admin" then
+            sendSummaryToDiscord()
+            TriggerClientEvent('vorp:TipBottom', source, "Discord summary sent.", 3000)
+        else
+            TriggerClientEvent('vorp:TipBottom', source, "Only admins can use this command.", 3000)
         end
     end
 end, false)
