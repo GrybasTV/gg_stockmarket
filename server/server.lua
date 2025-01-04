@@ -93,19 +93,6 @@ local function updatePricesForAll()
     TriggerClientEvent('stockmarket:updatePrices', -1, prices)
 end
 
--- Request event
-RegisterServerEvent('stockmarket:requestPrices')
-AddEventHandler('stockmarket:requestPrices', function()
-    local _source = source
-    local prices = {}
-    for stockId, stock in pairs(Config.Stocks) do
-        local buyPrice = stockPrices[stockId] or stock.price
-        local sellPrice = math.max(stock.minPrice, buyPrice - stock.priceChange.decrease)
-        prices[stockId] = { buy = buyPrice, sell = sellPrice }
-    end
-    TriggerClientEvent('stockmarket:updatePrices', _source, prices)
-end)
-
 -- Function to check cooldown
 local function isOnCooldown(playerId)
     local currentTime = GetGameTimer()
@@ -129,6 +116,38 @@ function table.contains(table, element)
     end
     return false
 end
+
+--Discord hook
+function sendDiscordMessage(message)
+    local webhookUrl = Config.webhookUrl
+    if webhookUrl then
+        PerformHttpRequest(webhookUrl, function(err, text, headers) end, 'POST', json.encode({ content = message }), { ['Content-Type'] = 'application/json' })
+    end
+end
+
+--- taxAmount
+local function round(value, decimals)
+    local multiplier = 10^(decimals or 0)
+    local rounded = math.floor(value * multiplier + 0.5) / multiplier    
+    return rounded
+end
+local function calculateTax(totalCost)
+    local rawTax = totalCost * (Config.Tax / 100)    
+    return round(rawTax, 2)
+end
+
+-- Request event
+RegisterServerEvent('stockmarket:requestPrices')
+AddEventHandler('stockmarket:requestPrices', function()
+    local _source = source
+    local prices = {}
+    for stockId, stock in pairs(Config.Stocks) do
+        local buyPrice = stockPrices[stockId] or stock.price
+        local sellPrice = math.max(stock.minPrice, buyPrice - stock.priceChange.decrease)
+        prices[stockId] = { buy = buyPrice, sell = sellPrice }
+    end
+    TriggerClientEvent('stockmarket:updatePrices', _source, prices)
+end)
 
 -- Purchase function
 RegisterServerEvent('stockmarket:buyStock')
@@ -173,11 +192,13 @@ AddEventHandler('stockmarket:buyStock', function(stockId, amount, locationName)
         totalCost = totalCost + currentPrice
         currentPrice = currentPrice + stock.priceChange.increase
     end
+        
+        local taxAmount = calculateTax(totalCost)
 
     -- Patikriname, ar žaidėjas turi pakankamai pinigų
-    if playerMoney >= totalCost then
-        -- Atnaujiname informaciją
-        Character.removeCurrency(0, totalCost) -- Pašaliname pinigus
+    if playerMoney >= (totalCost + taxAmount) then
+        -- Pašaliname bendrą sumą, įskaitant mokesčius
+        Character.removeCurrency(0, totalCost + taxAmount)
         stockPrices[stockId] = currentPrice -- Atnaujiname kainą
         MySQL.Async.execute('UPDATE stocks SET price = @price WHERE stock_id = @id', {
             ['@price'] = currentPrice,
@@ -186,7 +207,13 @@ AddEventHandler('stockmarket:buyStock', function(stockId, amount, locationName)
 
         VorpInv.addItem(_source, stock.item, amount) -- Pridedame akcijas į inventorių
         TriggerClientEvent('stockmarket:notify', _source, Translations.buySuccess:format(amount, stock.label, totalCost), "success")
+        if taxAmount > 0 then
+        TriggerClientEvent('stockmarket:notify', _source, string.format("%s: %.2f $", Translations.tax, taxAmount), "info")
+        end
         updatePricesForAll() -- Atnaujiname kainas visiems klientams
+        ---- discord hook
+        local message = "----------\n" .. string.format("📦 %s: %s\n💰 %s: $%.2f", Translations.item, stock.label, Translations.price, totalCost)
+        sendDiscordMessage(message)
     else
         TriggerClientEvent('stockmarket:notify', _source, Translations.notEnoughMoney, "error")
     end
@@ -235,6 +262,9 @@ AddEventHandler('stockmarket:sellStock', function(stockId, amount, locationName)
         totalEarnings = totalEarnings + sellPrice
         sellPrice = math.max(stock.minPrice, sellPrice - stock.priceChange.decrease)
     end
+    
+    local taxAmount = calculateTax(totalEarnings) 
+    local totalEarningsAfterTax = totalEarnings - taxAmount
 
     -- Atnaujiname kainas po pardavimo
     local newBuyPrice = math.max(stock.minPrice, buyPrice - (stock.priceChange.decrease * amount))
@@ -242,8 +272,8 @@ AddEventHandler('stockmarket:sellStock', function(stockId, amount, locationName)
 
     -- Tikriname, ar žaidėjas turi pakankamai prekių inventoriuje
     if VorpInv.getItemCount(_source, stock.item) >= amount then
-        -- Pelnas žaidėjui ir inventoriaus atnaujinimas
-        Character.addCurrency(0, totalEarnings)
+        -- Pelnas žaidėjui po mokesčių ir inventoriaus atnaujinimas
+        Character.addCurrency(0, totalEarningsAfterTax)
         VorpInv.subItem(_source, stock.item, amount)
 
         -- Atnaujiname duomenų bazę
@@ -254,7 +284,13 @@ AddEventHandler('stockmarket:sellStock', function(stockId, amount, locationName)
 
         -- Pranešimas apie sėkmingą pardavimą
         TriggerClientEvent('stockmarket:notify', _source, Translations.sellSuccess:format(amount, stock.label, totalEarnings), "success")
+        if taxAmount > 0 then
+            TriggerClientEvent('stockmarket:notify', _source, string.format("%s: %.2f $", Translations.tax, taxAmount), "info")
+        end
         updatePricesForAll()
+        ---- discord hook
+        local message = string.format("----------\n📦 %s: %s\n💰 %s: $%.2f", Translations.item, stock.label, Translations.price, totalEarnings)
+        sendDiscordMessage(message)
     else
         -- Klaida, jei žaidėjas neturi pakankamai prekių
         TriggerClientEvent('stockmarket:notify', _source, Translations.notEnoughItems, "error")
