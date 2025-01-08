@@ -4,6 +4,8 @@
 **Version:** 1.0.0  
 **Author:** GrybasTv
 
+Support: https://discord.gg/KxSBTYr5wS
+
 ## Overview
 The RedM Stock Market System introduces a virtual stock market to your RedM server, providing players with an opportunity to trade financial assets while enhancing the roleplay experience. This system integrates seamlessly with the **VORP Core Framework** and supports essential gameplay mechanics, including money sinks and dynamic economic interactions.
 
