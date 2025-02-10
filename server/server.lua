@@ -125,41 +125,76 @@ local function sendSummaryToDiscord()
         fields = {}
     }
 
-    -- Pridedame lentelės antraštę
-    table.insert(embed.fields, {
-        name = "**Item**",
-        value = "**🛒 Buy Price | 💰 Sell Price**",
-        inline = false
-    })
-
-    -- Pridedame kiekvieną atsargų įrašą
-    for stockId, stock in pairs(Config.Stocks) do
-        local buyPrice = stockPrices[stockId] or stock.price
-        local sellPrice = math.max(stock.minPrice, buyPrice - stock.priceChange.decrease)
-        local buyPriceStr = string.format("$%.2f", buyPrice)
-        local sellPriceStr = string.format("$%.2f", sellPrice)
-        local value = string.format("%s | %s", buyPriceStr, sellPriceStr)
+    -- Pridedame kiekvieną biržos vietą
+    for _, location in ipairs(Config.StockMarketLocations) do
+        local lines = {}
         
-        table.insert(embed.fields, {
-            name = stock.label,
-            value = value,
-            inline = true
-        })
+        -- Surenkame kiekvienos akcijos informaciją kaip eilutę
+        for _, stockId in ipairs(location.stocks) do
+            local stock = Config.Stocks[stockId]
+            if stock then
+                local buyPrice = stockPrices[stockId] or stock.price
+                local sellPrice = math.max(stock.minPrice, buyPrice - stock.priceChange.decrease)
+                local buyPriceStr = string.format("$%.2f", buyPrice)
+                local sellPriceStr = string.format("$%.2f", sellPrice)
+                table.insert(lines, string.format("%s: %s | %s", stock.label, buyPriceStr, sellPriceStr))
+            end
+        end
+        
+        if #lines == 0 then
+            lines = {"Šioje vietoje nėra prekių"}
+        end
+        
+        -- Suskaidome eilutes į kelias dalis, kad kiekvieno lauko ilgis neviršytų 1024 simbolių
+        local chunks = {}
+        local currentChunk = ""
+        for i, line in ipairs(lines) do
+            if currentChunk == "" then
+                currentChunk = line
+            else
+                if string.len(currentChunk) + 1 + string.len(line) <= 1024 then
+                    currentChunk = currentChunk .. "\n" .. line
+                else
+                    table.insert(chunks, currentChunk)
+                    currentChunk = line
+                end
+            end
+        end
+        if currentChunk ~= "" then
+            table.insert(chunks, currentChunk)
+        end
+        
+        -- Kiekvieną chunką įdedame į embed laukus
+        for i, chunk in ipairs(chunks) do
+            local fieldName = location.name
+            if i > 1 then
+                fieldName = fieldName .. " (toliau)"
+            end
+            table.insert(embed.fields, {
+                name = fieldName,
+                value = chunk,
+                inline = false
+            })
+        end
     end
 
     -- Siunčiame embed žinutę į Discord per webhook
     if Config.discordWebhook then
         local webhookUrl = Config.webhookUrl
         if webhookUrl then
+            local payload = { content = "Biržos atnaujinimas", embeds = { embed } }
+            local jsonPayload = json.encode(payload)
             PerformHttpRequest(webhookUrl, 
-                function(err, text, headers) end, 
+                function(err, text, headers)
+                end, 
                 'POST', 
-                json.encode({ embeds = { embed } }), 
+                jsonPayload, 
                 { ['Content-Type'] = 'application/json' }
             )
         end
     end
 end
+
 
 
 
@@ -216,6 +251,23 @@ AddEventHandler('stockmarket:requestPrices', function()
     TriggerClientEvent('stockmarket:updatePrices', _source, prices)
 end)
 
+-- NUI Event Handlers for Stock Market
+
+-- Handle stock price request from client
+RegisterServerEvent('stockmarket:requestPrices')
+AddEventHandler('stockmarket:requestPrices', function()
+    local _source = source
+    
+    -- Retrieve current stock prices from database or memory
+    local currentPrices = {}
+    for stockId, stock in pairs(Config.Stocks) do
+        currentPrices[stockId] = stock.currentPrice
+    end
+    
+    -- Send prices back to the specific client
+    TriggerClientEvent('stockmarket:sendPrices', _source, currentPrices)
+end)
+
 -- Purchase function
 RegisterServerEvent('stockmarket:buyStock')
 AddEventHandler('stockmarket:buyStock', function(stockId, amount, locationName)
@@ -255,12 +307,19 @@ AddEventHandler('stockmarket:buyStock', function(stockId, amount, locationName)
     local currentPrice = stockPrices[stockId] or stock.price
     local totalCost = 0
 
+    -- Patikriname ar žaidėjas gali panešti tiek daiktų
+    local canCarry = VorpInv.canCarryItems(_source, amount) 
+    if not canCarry then
+        TriggerClientEvent('stockmarket:notify', _source, "Jūs negalite panešti tiek daiktų!", "error")
+        return
+    end
+
     for i = 1, amount do
         totalCost = totalCost + currentPrice
         currentPrice = currentPrice + stock.priceChange.increase
     end
         
-        local taxAmount = calculateTax(totalCost)
+    local taxAmount = calculateTax(totalCost)
 
     -- Patikriname, ar žaidėjas turi pakankamai pinigų
     if playerMoney >= (totalCost + taxAmount) then
@@ -283,8 +342,7 @@ AddEventHandler('stockmarket:buyStock', function(stockId, amount, locationName)
     end
 end)
 
-
-
+-- Sell function
 RegisterServerEvent('stockmarket:sellStock')
 AddEventHandler('stockmarket:sellStock', function(stockId, amount, locationName)
     local _source = source
@@ -357,8 +415,3 @@ AddEventHandler('stockmarket:sellStock', function(stockId, amount, locationName)
         TriggerClientEvent('stockmarket:notify', _source, Translations.notEnoughItems, "error")
     end
 end)
-
-
-
-
-
