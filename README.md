@@ -5,37 +5,20 @@
 **Author:** GrybasTv
 
 ## Overview
-The RedM Stock Market System introduces a virtual stock market to your RedM server, providing players with an opportunity to trade financial assets while enhancing the roleplay experience. This system integrates seamlessly with the **VORP Core Framework** and supports essential gameplay mechanics, including money sinks and dynamic economic interactions.
+GG Stock Market is a comprehensive stock trading system for RedM, integrated with VORP framework. It provides players with a dynamic, interactive stock market experience.
 
----
+## Features
+- Real-time stock price updates
+- Buy and sell stocks through intuitive UI
+- Multiple stock options (TECH, ENERGY, FINANCE)
+- Responsive design
+- Language support (Lithuanian, English)
 
-## Key Features
-
-1. **Money Sink Opportunity**  
-   - Players spend in-game money on each trade, offering a sustainable way to reduce overall server currency inflation.
-
-2. **Educational Purpose**  
-   - The system educates players on how financial markets operate, the flow of money in investment schemes, and introduces them to the fundamentals of financial "pyramids."
-
-3. **Enhanced Roleplay**  
-   - Players can generate excitement (hype) around certain stocks, creating opportunities for profits. Much like in real life with Bitcoin or similar markets, profits are possible only when supply remains limited.
-
----
-
-## Highlights
-- **Dynamic Market Pricing:** Prices increase or decrease with every transaction, simulating supply and demand.
-- **Profit Opportunities:** Players who strategically trade and time their decisions can earn significant profits if the market conditions align.  
-- **Realistic Failures:** Players can experience losses, especially if overselling crashes the market.
-- **Roleplay-Driven Economy:** Introduces immersive scenarios for financial interactions, player collaboration, and market manipulation.
-
----
-
-## Requirements
-- **VORP Core Framework**  
-  Get it here: [VORP Core GitHub](https://github.com/orgs/VORPCORE/repositories)  
-- **VORP Inventory** and **VORP Menu** dependencies for inventory and menu interactions.
-
----
+## Dependencies
+- VORP Core
+- VORP Inventory
+- VORP Menu
+- MySQL Async
 
 ## Installation
 
