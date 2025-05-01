@@ -1,7 +1,8 @@
-
 local currentStockPrices = {}
 local MenuData = {}
 local blips = {}
+local VORPcore = {}
+local Translations = {}
 
 -- VORP Core ir Menu API inicijavimas
 TriggerEvent("getCore", function(core)
@@ -14,33 +15,41 @@ TriggerEvent("menuapi:getData", function(call)
 end)
 
 -- Vertimai
-
 Citizen.CreateThread(function()
     local language = Config.Language or "en"
-    if Config.Translations[language] then
-        for k, v in pairs(Config.Translations[language]) do
-            Config.Translations[k] = v
-        end
-    else
-        print("Language not found. Defaulting to English.")
-        for k, v in pairs(Config.Translations["en"]) do
-            Config.Translations[k] = v
-        end
-    end
+    Translations = Config.Translations[language] or Config.Translations["en"]
 end)
 
--- Notification system
+setmetatable(Translations, {
+    __index = function(_, key)
+        local language = Config.Language or "en"
+        local translation = Config.Translations[language][key] or Config.Translations["en"][key]
+        if not translation then
+            print(string.format("No translations for '%s' .", key))
+            return key
+        end
+        return translation
+    end
+})
 
+-- Notification system
 RegisterNetEvent('stockmarket:notify')
 AddEventHandler('stockmarket:notify', function(message, messageType)
-    local _source = source
-    VorpCore = VORPcore
-    if messageType == "success" then
-        TriggerEvent('vorp:TipRight', message, 5000)
-    elseif messageType == "error" then        
-        TriggerEvent('vorp:TipRight', message, 5000)
-    else
-        TriggerEvent('vorp:TipRight', message, 5000)
+    -- Padalinkime pranešimą į eilutes
+    local lines = {}
+    for line in message:gmatch("[^\n]+") do
+        table.insert(lines, line)
+    end
+
+    -- Rodome kiekvieną eilutę atskirai
+    for i, line in ipairs(lines) do
+        if messageType == "success" then
+            TriggerEvent("vorp:TipRight", line, 4000 + (i * 1000))
+        elseif messageType == "error" then        
+            TriggerEvent("vorp:TipRight", line, 4000 + (i * 1000))
+        else
+            TriggerEvent("vorp:TipRight", line, 4000 + (i * 1000))
+        end
     end
 end)
 
@@ -95,7 +104,7 @@ local function displayPromptWithPrices()
 
     -- Jei artimiausia lokacija yra pakankamai arti, rodome prompt su tam tikromis akcijomis
     if closestLocation and closestDistance < 2.0 then
-        local text = Config.Translations.promptText
+        local text = Translations.promptText or "Press [G] to trade"
         for _, stockId in pairs(closestLocation.stocks) do
             local stock = Config.Stocks[stockId]
             if stock then
@@ -107,8 +116,6 @@ local function displayPromptWithPrices()
     end
 end
 
-
-
 -- Function to open the menu with a new price request
 local function openStockMarketMenu(location)
     requestPricesFromServer() -- Užklausiame kainų iš serverio
@@ -118,13 +125,13 @@ local function openStockMarketMenu(location)
     for _, stockId in pairs(location.stocks) do
         local stock = Config.Stocks[stockId]
         if stock then
-            table.insert(elements, { label = string.format(Config.Translations.buyOption, stock.label), value = "buy_" .. stockId })
-            table.insert(elements, { label = string.format(Config.Translations.sellOption, stock.label), value = "sell_" .. stockId })
+            table.insert(elements, { label = string.format(Translations.buyOption, stock.label), value = "buy_" .. stockId })
+            table.insert(elements, { label = string.format(Translations.sellOption, stock.label), value = "sell_" .. stockId })
         end
     end
 
     MenuData.Open('default', GetCurrentResourceName(), 'stock_menu', {
-        title = Config.Translations.menuTitle,
+        title = Translations.menuTitle,
         align = 'top-left',
         elements = elements
     }, function(data, menu)
@@ -138,7 +145,6 @@ local function openStockMarketMenu(location)
         freezePlayer(false)
     end)
 end
-
 
 -- Main thread
 Citizen.CreateThread(function()
@@ -167,9 +173,6 @@ Citizen.CreateThread(function()
     end
 end)
 
-
-
-
 -- Creating blips
 Citizen.CreateThread(function()
     for _, location in pairs(Config.StockMarketLocations) do
@@ -181,7 +184,6 @@ Citizen.CreateThread(function()
         table.insert(blips, blip)
     end
 end)
-
 
 -- Removing blips when the resource stops
 AddEventHandler("onResourceStop", function(resourceName)
