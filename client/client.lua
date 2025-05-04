@@ -103,8 +103,8 @@ local function displayPromptWithPrices()
     end
 
     -- Jei artimiausia lokacija yra pakankamai arti, rodome prompt su tam tikromis akcijomis
-    if closestLocation and closestDistance < 2.5 then
-        local text = Config.Translations.promptText
+    if closestLocation and closestDistance < 2.0 then
+        local text = Translations.promptText or "Press [G] to trade"
         for _, stockId in pairs(closestLocation.stocks) do
             local stock = Config.Stocks[stockId]
             if stock then

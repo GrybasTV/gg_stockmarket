@@ -258,23 +258,6 @@ AddEventHandler('stockmarket:requestPrices', function()
     TriggerClientEvent('stockmarket:updatePrices', _source, prices)
 end)
 
--- NUI Event Handlers for Stock Market
-
--- Handle stock price request from client
-RegisterServerEvent('stockmarket:requestPrices')
-AddEventHandler('stockmarket:requestPrices', function()
-    local _source = source
-    
-    -- Retrieve current stock prices from database or memory
-    local currentPrices = {}
-    for stockId, stock in pairs(Config.Stocks) do
-        currentPrices[stockId] = stock.currentPrice
-    end
-    
-    -- Send prices back to the specific client
-    TriggerClientEvent('stockmarket:sendPrices', _source, currentPrices)
-end)
-
 -- Purchase function
 RegisterServerEvent('stockmarket:buyStock')
 AddEventHandler('stockmarket:buyStock', function(stockId, amount, locationName)
@@ -314,19 +297,12 @@ AddEventHandler('stockmarket:buyStock', function(stockId, amount, locationName)
     local currentPrice = stockPrices[stockId] or stock.price
     local totalCost = 0
 
-    -- Patikriname ar žaidėjas gali panešti tiek daiktų
-    local canCarry = VorpInv.canCarryItems(_source, amount) 
-    if not canCarry then
-        TriggerClientEvent('stockmarket:notify', _source, "Jūs negalite panešti tiek daiktų!", "error")
-        return
-    end
-
     for i = 1, amount do
         totalCost = totalCost + currentPrice
         currentPrice = currentPrice + stock.priceChange.increase
     end
         
-    local taxAmount = calculateTax(totalCost)
+        local taxAmount = calculateTax(totalCost)
 
     -- Patikriname, ar žaidėjas turi pakankamai pinigų
     if playerMoney >= (totalCost + taxAmount) then
@@ -356,6 +332,131 @@ end)
 
 
 
+-- Funkcija patikrinti ar daiktas yra gendantis
+local function IsPerishableItem(itemName)
+    -- Čia galite pridėti logiką, kuri tikrina ar daiktas yra maistas ar kitas gendantis daiktas
+    -- Pavyzdžiui, galite turėti sąrašą gendančių daiktų
+    local perishableItems = {
+        "meat", "fish", "fruit", "vegetable", "milk", "bread"
+        -- Pridėkite kitus gendančius daiktus
+    }
+    
+    for _, name in ipairs(perishableItems) do
+        if name == itemName then
+            return true
+        end
+    end
+    
+    return false
+end
+
+-- Funkcija gauti daikto maksimalią degradaciją
+local function GetItemMaxDegradation(itemName)
+    if Config.ExpirationRules then
+        for _, rule in pairs(Config.ExpirationRules) do
+            if rule.itemName == itemName then
+                return rule.defaultDegradationTime
+            end
+        end
+    end
+    return nil
+end
+
+-- Funkcija gauti daikto degradaciją
+local function GetItemDegradation(itemName, source, callback)
+    -- Gauname visus žaidėjo inventory daiktus
+    local items = VorpInv.getUserInventory(source)
+    
+    DebugPrint("^2[DEBUG] Checking degradation for item:^7", itemName)
+    DebugPrint("^2[DEBUG] Total inventory items:^7", #items)
+    
+    -- Ieškome konkretaus daikto
+    for _, item in pairs(items) do
+        DebugPrint("^2[DEBUG] Checking item:^7", item.name)
+        if item.name == itemName then
+            DebugPrint("^2[DEBUG] Found matching item:^7", itemName)
+            
+            -- Gauname metadata tiesiogiai iš item objekto
+            local metadata = item.metadata
+            DebugPrint("^2[DEBUG] Item metadata:^7", json.encode(metadata or {}))
+            
+            -- Tikriname visus galimus metadata laukus
+            if metadata then
+                local degradation = metadata.durability or 
+                                  metadata.condition or 
+                                  metadata.degradation or 
+                                  metadata.percentage
+                
+                DebugPrint("^2[DEBUG] Found degradation value:^7", degradation)
+                if degradation then
+                    callback(tonumber(degradation))
+                    return
+                end
+            end
+            
+            -- Bandome gauti percentage iš item
+            if item.percentage then
+                local percentage = tonumber(item.percentage)
+                DebugPrint("^2[DEBUG] Using item percentage:^7", percentage)
+                
+                -- Jei percentage yra 0, bet tai nėra maisto produktas ar gendantis daiktas,
+                -- laikome, kad tai yra 100% būklės
+                if percentage == 0 and not IsPerishableItem(itemName) then
+                    DebugPrint("^2[DEBUG] Item with 0% is not perishable, using 100%^7")
+                    callback(100)
+                    return
+                end
+                
+                callback(percentage)
+                return
+            end
+        end
+    end
+    
+    DebugPrint("^2[DEBUG] No degradation found, using default 100%^7")
+    callback(100) -- Grąžiname 100% jei nerandame degradacijos
+end
+
+
+
+-- Kainos skaičiavimo funkcija su decay
+local function CalculatePriceWithDecay(basePrice, currentDegradation)
+    -- Jei daikto būklė viršija arba lygi tolerancijos ribai - pilna kaina
+    if currentDegradation >= Config.DecayTolerance then
+        return basePrice
+    end
+    
+    -- Degradation yra procentais (0-100)
+    local condition = currentDegradation / 100
+    -- Apribojame condition tarp 0.1 ir 1.0 (10% - 100% originalios kainos)
+    condition = math.max(0.1, math.min(1.0, condition))
+    return basePrice * condition
+end
+
+-- Funkcija siųsti pranešimą į Discord
+local function sendToDiscord(title, description, color, isTransaction)
+    if Config.discordWebhook then
+        local embed = {
+            {
+                ["title"] = title,
+                ["description"] = description,
+                ["color"] = color or 16776960,
+                ["footer"] = {
+                    ["text"] = os.date("%Y-%m-%d %H:%M:%S")
+                }
+            }
+        }
+        
+        -- Pasirenkame webhook URL pagal tipą
+        local webhookUrl = isTransaction and Config.transactionWebhookUrl or Config.webhookUrl
+        
+        if webhookUrl then
+            PerformHttpRequest(webhookUrl, function(err, text, headers) end, 'POST', json.encode({embeds = embed}), { ['Content-Type'] = 'application/json' })
+        end
+    end
+end
+
+-- Pardavimo funkcija su decay logika
 RegisterServerEvent('stockmarket:sellStock')
 AddEventHandler('stockmarket:sellStock', function(stockId, amount, locationName)
     local _source = source
@@ -444,3 +545,8 @@ AddEventHandler('stockmarket:sellStock', function(stockId, amount, locationName)
         updatePricesForAll()
     end)
 end)
+
+
+
+
+
